@@ -1,0 +1,11 @@
+.{
+    .name = .krvs,
+    .version = "0.0.0",
+    .minimum_zig_version = "0.17.0",
+    .fingerprint = 0x2a7fedd6254589d1,
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
