@@ -13,14 +13,10 @@ pub const box = @import("box.zig");
 /// Record assembly: marker / cnit / kfrm / kfrg + init resolver.
 pub const container = @import("container.zig");
 
-/// C ABI exports (see include/krvs.h). Referenced so `export fn`s are compiled into
-/// the C-ABI library artifact.
-pub const c_api = @import("c_api.zig");
-
-// Force the C ABI exports to be kept in the library artifact (not dead-stripped).
-comptime {
-    _ = c_api;
-}
+// The C ABI (src/c_api.zig, include/krvs.h) is NOT exposed here: it uses the C
+// allocator and would force a libc dependency onto pure-Zig consumers of this module.
+// It is built as a separate artifact rooted at src/c_root.zig (which links libc) and
+// exercised by the C smoke test.
 
 pub const CONTAINER_VERSION = container.CONTAINER_MAJOR;
 
@@ -28,5 +24,4 @@ test {
     std.testing.refAllDecls(@This());
     _ = box;
     _ = container;
-    _ = c_api;
 }
