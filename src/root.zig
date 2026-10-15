@@ -13,10 +13,20 @@ pub const box = @import("box.zig");
 /// Record assembly: marker / cnit / kfrm / kfrg + init resolver.
 pub const container = @import("container.zig");
 
+/// C ABI exports (see include/krvs.h). Referenced so `export fn`s are compiled into
+/// the C-ABI library artifact.
+pub const c_api = @import("c_api.zig");
+
+// Force the C ABI exports to be kept in the library artifact (not dead-stripped).
+comptime {
+    _ = c_api;
+}
+
 pub const CONTAINER_VERSION = container.CONTAINER_MAJOR;
 
 test {
     std.testing.refAllDecls(@This());
     _ = box;
     _ = container;
+    _ = c_api;
 }
