@@ -33,8 +33,28 @@ pub fn build(b: *std.Build) void {
     });
     capi.installHeadersDirectory(b.path("include"), "", .{});
     b.installArtifact(capi);
-    // For a shared library instead, add:
-    //   const shared = b.addLibrary(.{ .name = "krvs_c", .root_module = mod, .linkage = .dynamic });
+
+    // Shared C-ABI library: same c_root module, dynamic linkage. This is what the
+    // Python ctypes bindings (python/krvs) load. Produces libkrvs_c.{dylib,so,dll}.
+    const capi_shared_mod = b.createModule(.{
+        .root_source_file = b.path("src/c_root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    capi_shared_mod.link_libc = true;
+    const capi_shared = b.addLibrary(.{
+        .name = "krvs_c",
+        .root_module = capi_shared_mod,
+        .linkage = .dynamic,
+    });
+    b.installArtifact(capi_shared);
+
+    // Copy the shared library into the Python package (python/krvs/_libs/) so an
+    // installed package can find it without the zig-out/ tree. `zig build` keeps this
+    // in sync; the Python loader checks _libs/ first, then zig-out/lib for dev.
+    const sync_pylib = b.addUpdateSourceFiles();
+    sync_pylib.addCopyFileToSource(capi_shared.getEmittedBin(), b.fmt("python/krvs/_libs/{s}", .{sharedLibName("krvs_c", target.result)}));
+    b.getInstallStep().dependOn(&sync_pylib.step);
 
     // Zig unit tests.
     const lib_tests = b.addTest(.{ .root_module = mod });
@@ -58,4 +78,14 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests + C smoke test");
     test_step.dependOn(&run_lib_tests.step);
     test_step.dependOn(&run_csmoke.step);
+}
+
+/// Platform-correct shared-library filename for a target (no path), e.g.
+/// libkrvs_c.dylib / libkrvs_c.so / krvs_c.dll.
+fn sharedLibName(comptime stem: []const u8, target: std.Target) []const u8 {
+    return switch (target.os.tag) {
+        .windows => stem ++ ".dll",
+        .macos => "lib" ++ stem ++ ".dylib",
+        else => "lib" ++ stem ++ ".so",
+    };
 }
